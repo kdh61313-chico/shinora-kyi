@@ -1,0 +1,11 @@
+{
+  "name": "quack-mafia",
+  "version": "1.0.0",
+  "description": "꽥꽥 마피아 - 거위 사이에 숨은 오리를 찾는 브라우저 소셜 추리 게임",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --import ./tests/shim.mjs tests/roles.test.mjs"
+  }
+}
