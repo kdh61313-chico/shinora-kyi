@@ -3,7 +3,7 @@ import { J } from './josa.js';
 import { getMap, TILE, FLOOR_NAMES } from './maps.js';
 import { ROLES, TEAMS, ROLE_ORDER } from './roles.js';
 import { COLORS, gooseSprite, propSprite, tileSprite } from './sprites.js';
-import { h, $, gooseCanvas, showEnd, roleCard, introOverlay } from './util.js';
+import { h, $, gooseCanvas, showEnd, roleCard, introOverlay, IS_TOUCH, fullscreenButton } from './util.js';
 import { openTask } from './tasks.js';
 
 const now = () => Date.now();
@@ -68,8 +68,8 @@ export class RTView {
       vent: this.canVent ? btn('V', '벤트', 'vent', () => this.doVent()) : null,
     };
     this.sabBtns = this.isDuck ? h('div', { class: 'sabs' }, ['lights', 'reactor', 'comms'].map((t, i) => h('button', { class: 'sbtn', 'data-sab': t, onclick: () => this.app.act('sab', { type: t }) }, `${i + 1} ${this.map.sab[t]}`))) : null;
-    this.roleBox = h('div', { class: 'hud-role' });
-    this.taskList = h('div', { class: 'hud-tasks' });
+    this.roleBox = h('div', { class: 'hud-role' + (IS_TOUCH ? ' collapsed' : ''), onclick: () => this.roleBox.classList.toggle('collapsed') });
+    this.taskList = h('div', { class: 'hud-tasks', onclick: () => { this.taskList.classList.toggle('collapsed'); } });
     this.alertBox = h('div', { class: 'hud-alert' });
     this.taskBar = h('div', { class: 'taskbar' }, h('div', { class: 'fill' }), h('span', {}, '전체 임무'));
     this.ghostChat = h('div', { class: 'ghostchat hidden' });
@@ -80,8 +80,10 @@ export class RTView {
       h('div', { class: 'hud' },
         h('div', { class: 'hud-tl' }, this.roleBox, this.taskList),
         h('div', { class: 'hud-tc' }, this.taskBar, this.alertBox),
-        h('div', { class: 'hud-tr' }, this.app.micButton(), h('button', { class: 'btn small', onclick: () => this.toggleMap() }, '🗺️ 지도(M)'),
-          h('button', { class: 'btn small', onclick: () => this.app.showRoleGuide() }, '📖')),
+        h('div', { class: 'hud-tr' }, this.app.micButton(), h('button', { class: 'btn small', onclick: () => this.toggleMap() }, '🗺️', h('span', { class: 'desk' }, ' 지도(M)')),
+          this.chatToggle = h('button', { class: 'btn small hidden', onclick: () => this.ghostChat.classList.toggle('closed') }, '💬'),
+          h('button', { class: 'btn small', onclick: () => this.app.showRoleGuide() }, '📖'),
+          fullscreenButton()),
         h('div', { class: 'hud-br' }, this.sabBtns, h('div', { class: 'abtns' }, Object.values(this.btns).filter(Boolean))),
         this.joyEl, this.ghostChat, this.minimap),
       this.overlay);
@@ -93,10 +95,11 @@ export class RTView {
     this.roleBox.append(roleCard(this.app, { ...this.you, role: this.role }, this.roster, { infected: this.infected }));
   }
   resize() {
-    const dpr = 1;
-    this.canvas.width = Math.floor(innerWidth * dpr); this.canvas.height = Math.floor(innerHeight * dpr);
-    this.fog.width = this.canvas.width; this.fog.height = this.canvas.height;
-    this.Z = Math.max(2, Math.round(Math.min(this.canvas.width / (22 * TILE), this.canvas.height / (13 * TILE))));
+    const dpr = this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    const cw = this.canvas.width = Math.floor(innerWidth * dpr), ch = this.canvas.height = Math.floor(innerHeight * dpr);
+    this.fog.width = cw; this.fog.height = ch;
+    // 짧은 쪽에 약 12.5타일, 긴 쪽에 약 20타일 보이도록
+    this.Z = Math.max(1, Math.round(Math.min(Math.min(cw, ch) / (12.5 * TILE), Math.max(cw, ch) / (20 * TILE))));
   }
 
   bindInput() {
@@ -128,6 +131,17 @@ export class RTView {
       j.firstChild.style.transform = `translate(${dx * 30}px, ${dy * 30}px)`;
     };
     j.addEventListener('pointerdown', e => { pid = e.pointerId; j.setPointerCapture(pid); setJoy(e); });
+    // 화면 빈 곳을 터치하면 그 자리에 조이스틱이 생김
+    this.canvas.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' || pid != null) return;
+      e.preventDefault();
+      j.style.left = (e.clientX - j.offsetWidth / 2) + 'px'; j.style.top = (e.clientY - j.offsetHeight / 2) + 'px'; j.style.bottom = 'auto';
+      j.classList.add('floating');
+      pid = e.pointerId; this.canvas.setPointerCapture(pid); setJoy(e);
+    });
+    this.canvas.addEventListener('pointermove', e => { if (e.pointerId === pid) setJoy(e); });
+    const endFloat = (e) => { if (e.pointerId !== pid) return; end(); j.style.left = ''; j.style.top = ''; j.style.bottom = ''; j.classList.remove('floating'); };
+    this.canvas.addEventListener('pointerup', endFloat); this.canvas.addEventListener('pointercancel', endFloat);
     j.addEventListener('pointermove', e => { if (e.pointerId === pid) setJoy(e); });
     const end = () => { pid = null; this.joy = { x: 0, y: 0 }; j.firstChild.style.transform = ''; };
     j.addEventListener('pointerup', end); j.addEventListener('pointercancel', end);
@@ -295,7 +309,7 @@ export class RTView {
       b.querySelector('.cdt').textContent = cd > 0 ? Math.ceil(cd / 1000) : '';
     };
     const u = n.use;
-    setB(this.btns.use, !!u, !u ? '사용' : u.kind === 'button' ? '긴급회의' : u.kind === 'fix' ? '수리' : '임무');
+    setB(this.btns.use, !!u, !u ? '사용' : u.kind === 'button' ? '회의' : u.kind === 'fix' ? '수리' : '임무');
     setB(this.btns.report, !!n.body);
     if (this.btns.kill) setB(this.btns.kill, !!n.kill && t >= this.killReady, null, this.killReady - t);
     if (this.btns.abil) {
@@ -308,12 +322,12 @@ export class RTView {
     if (this.btns.vent) setB(this.btns.vent, !!n.vent);
     if (this.sabBtns) for (const b of this.sabBtns.children) b.classList.toggle('off', !!this.sab || !this.alive);
     // 임무 목록
-    const tl = this.taskList; tl.innerHTML = '';
+    const tl = this.taskList; const tlKey = this.sab?.type + '|' + [...this.done].join() + '|' + this.tasks.join(); if (tlKey === this.tlKey && tl.childElementCount) { /* 변화 없음 */ } else { this.tlKey = tlKey; tl.innerHTML = '';
     if (this.sab?.type === 'comms') tl.append(h('div', { class: 'tl-h bad' }, '📡 통신 장애! 임무 목록을 볼 수 없습니다'));
     else {
       tl.append(h('div', { class: 'tl-h' }, this.you.team === 'goose' ? `임무 (${this.done.size}/${this.tasks.length})` : '가짜 임무 (위장용)'));
       for (const id of this.tasks) { const st = this.map.stations[id]; tl.append(h('div', { class: 'tl' + (this.done.has(id) ? ' done' : '') }, `${st.room}: ${st.label}`)); }
-    }
+    } }
     this.taskBar.firstChild.style.width = (this.tp[1] ? (this.tp[0] / this.tp[1]) * 100 : 0) + '%';
     // 경고
     let al = '';
@@ -422,7 +436,7 @@ export class RTView {
     } else if (!this.alive) { ctx.fillStyle = 'rgba(40,20,80,0.18)'; ctx.fillRect(0, 0, cw, ch); }
     if (this.sab?.type === 'reactor') { ctx.fillStyle = `rgba(255,0,0,${0.12 + 0.1 * Math.sin(this.frame / 6)})`; ctx.fillRect(0, 0, cw, ch); }
     // 이름
-    ctx.textAlign = 'center'; ctx.font = `${Math.max(11, Z * 4)}px Galmuri11, monospace`;
+    ctx.textAlign = 'center'; ctx.font = `${Math.max(11 * this.dpr, Z * 4)}px Galmuri11, monospace`;
     const mates = new Set(this.you.mates || []);
     for (const [id, e, look, gy] of names) {
       const showId = e.morph || id;
@@ -430,7 +444,7 @@ export class RTView {
       let col = '#ffffff';
       if (this.isDuck && (mates.has(showId) || (showId === this.me))) col = '#ff7070';
       if (this.you.lover === showId) col = '#ff9ad5';
-      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.lineWidth = 3 * this.dpr; ctx.strokeStyle = 'rgba(0,0,0,0.85)';
       const label = look.name + (this.infected.has(id) ? ' 🕊️' : '');
       ctx.strokeText(label, nx, ny); ctx.fillStyle = col; ctx.fillText(label, nx, ny);
       if (this.app.voice?.speaking(id)) { ctx.fillText('🔊', nx + ctx.measureText(label).width / 2 + 10, ny); }
@@ -440,7 +454,7 @@ export class RTView {
       const e = this.ents.get(this.track);
       const a = Math.atan2(e.y - this.y, e.x - this.x), r = Math.min(cw, ch) * 0.38;
       const ax = cw / 2 + Math.cos(a) * r, ay = ch / 2 + Math.sin(a) * r;
-      ctx.save(); ctx.translate(ax, ay); ctx.rotate(a);
+      ctx.save(); ctx.translate(ax, ay); ctx.rotate(a); ctx.scale(this.dpr, this.dpr);
       ctx.fillStyle = COLORS[this.P(this.track).color].b; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -9); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
     }
@@ -470,10 +484,10 @@ export class RTView {
         this.alive = false; this.taskOpen?.();
         const msg = { misfire: '무고한 사람을 쏴서 죽었습니다', eject: '추방당했습니다', heartbreak: '연인을 따라 떠났습니다', assassinFail: '암살에 실패했습니다' }[m.cause] || '누군가에게 당했습니다!';
         this.flash(`💀 ${msg}`, '이제 유령입니다. 유령끼리 대화할 수 있어요.');
-        this.ghostChat.classList.remove('hidden'); this.ghostChat.innerHTML = ''; this.ghostChat.append(this.app.chatBox('ghost'));
+        this.ghostChat.classList.remove('hidden'); if (IS_TOUCH) { this.ghostChat.classList.add('closed'); this.chatToggle.classList.remove('hidden'); } this.ghostChat.innerHTML = ''; this.ghostChat.append(this.app.chatBox('ghost'));
         return;
       }
-      case 'revived': this.alive = true; this.ghostChat.classList.add('hidden'); this.flash('✝️ 되살아났습니다!', ''); return;
+      case 'revived': this.alive = true; this.ghostChat.classList.add('hidden'); this.chatToggle.classList.add('hidden'); this.flash('✝️ 되살아났습니다!', ''); return;
       case 'track': this.track = m.target; return;
       case 'cctv': this.cctvUntil = now() + m.ms; return;
       case 'infected': this.infected = new Set(m.list); this.renderRoleBox(); return;

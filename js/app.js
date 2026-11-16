@@ -5,7 +5,7 @@ import { ROLES, TEAMS, ROLE_ORDER, SETTING_DEFS, TOGGLE_DEFS, maxDucks } from '.
 import { COLORS, HATS, gooseSprite, tileSprite } from './sprites.js';
 import { MAP_LIST, getMap, TILE } from './maps.js';
 import { RTView } from './rt.js';
-import { $, h, gooseCanvas } from './util.js';
+import { $, h, gooseCanvas, IS_TOUCH, keepAwake } from './util.js';
 export { $, h, gooseCanvas };
 import { TurnView } from './turn.js';
 
@@ -75,6 +75,7 @@ class App {
       try {
         const id = await net.open(code);
         this.hostNet = net; this.code = code; this.me = id; this.isHost = true;
+        if (IS_TOUCH) setTimeout(() => this.toast('📱 방장은 게임 중에 다른 앱으로 나가거나 화면을 끄면 게임이 멈춰요!', 'role'), 800);
         this.game = new HostGame(net);
         net.onSelf = (m) => this.onMsg(m);
         this.sendRaw = (m) => this.game.handle(id, m);
@@ -111,7 +112,7 @@ class App {
 
   leaveToTitle(why) {
     try { this.view?.destroy(); } catch (e) { /* noop */ }
-    this.view = null;
+    this.view = null; keepAwake(false);
     this.game?.destroy(); this.hostNet?.close(); this.clientNet?.close();
     this.game = this.hostNet = this.clientNet = null;
     if (this.voice?.stream) this.voice.stream.getTracks().forEach(t => t.stop());
@@ -148,6 +149,8 @@ class App {
         this.chatLog = [];
         this.view?.destroy();
         this.view = m.mode === 'rt' ? new RTView(this, m) : new TurnView(this, m);
+        keepAwake(true);
+        if (IS_TOUCH && m.mode === 'rt' && innerHeight > innerWidth) setTimeout(() => this.toast('📱 가로로 돌리면 더 넓게 보여요', 'info'), 6500);
         return;
       }
       case 'end': this.view?.onEnd?.(m); this.phase = 'end'; return;
@@ -251,7 +254,8 @@ class App {
 
   micButton() {
     const v = this.voice;
-    const label = !v || !v.available ? '🎤 음성 미지원' : !v.enabled ? '🎤 마이크 켜기' : v.muted ? '🔇 음소거됨' : '🎙️ 마이크 켜짐';
+    const icon = !v || !v.available || !v.enabled ? '🎤' : v.muted ? '🔇' : '🎙️';
+    const label = !v || !v.available ? ' 음성 미지원' : !v.enabled ? ' 마이크 켜기' : v.muted ? ' 음소거됨' : ' 마이크 켜짐';
     return h('button', {
       class: 'btn mic' + (v?.enabled && !v.muted ? ' live' : ''), 'data-mic': 1,
       onclick: async (e) => {
@@ -262,7 +266,7 @@ class App {
         } else v.setMuted(!v.muted);
         this.refreshMic();
       },
-    }, label);
+    }, icon, h('span', { class: 'mlabel' }, label));
   }
   refreshMic() { for (const b of document.querySelectorAll('[data-mic]')) b.replaceWith(this.micButton()); }
 
@@ -355,5 +359,8 @@ function mapThumb(id) {
   return out;
 }
 
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && app.view) keepAwake(true); });
+for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+if (IS_TOUCH) document.body.classList.add('touch');
 export const app = new App();
 window.qmApp = app;

@@ -78,3 +78,26 @@ export function showEnd(app, m, roster) {
   document.body.append(el);
   const obs = setInterval(() => { if (app.phase === 'lobby') { el.remove(); clearInterval(obs); } }, 300);
 }
+
+// ---------- 모바일 ----------
+export const IS_TOUCH = typeof matchMedia !== 'undefined' && (matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches);
+
+export function fullscreenButton() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return null; // 아이폰 사파리는 지원 안 함
+  return h('button', { class: 'btn small', title: '전체 화면', onclick: () => {
+    const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+    if (isFs) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else { try { const p = req.call(el); p?.then?.(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {}); } catch (e) { /* noop */ } }
+  } }, '⛶');
+}
+
+// 게임 중 화면 꺼짐 방지
+let wakeLock = null;
+export async function keepAwake(on) {
+  try {
+    if (on && 'wakeLock' in navigator && !wakeLock && document.visibilityState === 'visible') { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+    if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) { wakeLock = null; }
+}

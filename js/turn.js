@@ -2,7 +2,7 @@ import { J } from './josa.js';
 // 낮/밤 마피아 모드 클라이언트
 import { ROLES, TEAMS, ROLE_ORDER } from './roles.js';
 import { COLORS, gooseSprite, tileSprite, propSprite } from './sprites.js';
-import { h, $, gooseCanvas, showEnd, roleCard, introOverlay } from './util.js';
+import { h, $, gooseCanvas, showEnd, roleCard, introOverlay, fullscreenButton } from './util.js';
 
 const now = () => Date.now();
 const PH_NAME = { intro: '게임 준비', night: '🌙 밤', morning: '🌅 아침', day: '☀️ 낮 토론', dayvote: '🗳️ 투표', verdict: '⚖️ 판결' };
@@ -53,7 +53,7 @@ export class TurnView {
     this.topbar.innerHTML = '';
     this.topbar.append(h('div', { class: 'tb-phase' }, (this.day ? `${this.day}일차 · ` : '') + PH_NAME[ph]),
       h('div', { class: 'tb-timer' }, Math.max(0, Math.ceil((this.ends - now()) / 1000)) + '초'),
-      this.app.micButton(), h('button', { class: 'btn small', onclick: () => this.app.showRoleGuide() }, '📖'));
+      this.app.micButton(), h('button', { class: 'btn small', onclick: () => this.app.showRoleGuide() }, '📖'), fullscreenButton());
     document.body.classList.toggle('night', ph === 'night');
     // 카드
     this.cards.innerHTML = '';

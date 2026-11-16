@@ -166,7 +166,7 @@ input:focus { border-color: var(--yel); }
 
 /* ---------- 실시간 게임 ---------- */
 #game { overflow: hidden; }
-.world { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.world { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; touch-action: none; }
 .hud { position: absolute; inset: 0; pointer-events: none; }
 .hud > * { pointer-events: auto; }
 .hud-tl { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 8px; width: 280px; max-width: 46vw; }
@@ -292,3 +292,92 @@ input:focus { border-color: var(--yel); }
   .rc-desc { display: none; }
   .abtn { width: 62px; height: 62px; font-size: 12px; }
 }
+
+/* ================= 모바일 / 터치 ================= */
+html, body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+.hud, .abtn, .sbtn, .task, .tcard, .mcard, .joy { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.screen { height: 100dvh; }
+.desk { }
+.hud-role { cursor: pointer; }
+.hud-role.collapsed .rc-desc, .hud-role.collapsed .rc-extra { display: none; }
+.hud-role.collapsed .rc-top::after { content: '▾'; font-size: 11px; color: var(--dim); margin-left: 4px; }
+.hud-tasks { cursor: pointer; }
+.hud-tasks.collapsed .tl { display: none; }
+.hud-tasks .tl-h::after { content: ' ▴'; color: var(--dim); }
+.hud-tasks.collapsed .tl-h::after { content: ' ▾'; }
+.ghostchat.closed { display: none; }
+.joy.floating { display: block; opacity: .85; }
+
+body.touch input { font-size: 16px; }
+body.touch .abtn .key, body.touch .desk { display: none; }
+body.touch .joy { display: block; }
+body.touch .hud-tr { gap: 4px; }
+body.touch .hud-tr .btn { padding: 6px 9px; font-size: 15px; }
+body.touch .hud-tr .mic .mlabel { display: none; }
+body.touch .abtn { width: 72px; height: 72px; font-size: 14px; border-radius: 12px; }
+body.touch .abtns { gap: 6px; max-width: 240px; }
+body.touch .sbtn { padding: 8px 8px; font-size: 12px; }
+body.touch .hud-tl { width: auto; max-width: 52vw; gap: 4px; }
+body.touch .rolecard { padding: 5px 7px; }
+body.touch .rc-top { font-size: 14px; }
+body.touch .hud-tasks { font-size: 11px; padding: 4px 6px; max-height: 26vh; }
+body.touch .ghostchat { left: 10px; right: auto; bottom: auto; top: 30vh; width: min(320px, 70vw); height: 200px; }
+body.touch .meeting .chat input, body.touch .chat input { font-size: 16px; }
+body.touch .lobby-grid .chat { height: 260px; }
+
+/* 세로 화면 휴대폰 */
+@media (max-width: 600px) {
+  .hud-tc { top: 50px; left: auto; right: 10px; transform: none; width: 46vw; align-items: stretch; }
+  .hud-alert { font-size: 11px; padding: 4px 6px; }
+  .hud-tl { max-width: 50vw; }
+  .meeting { inset: 6px; padding: 8px; }
+  .meet-head { font-size: 13px; }
+  .mgrid { grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .mcard, .tcard { padding: 3px 5px; min-height: 48px; gap: 4px; }
+  .mcard canvas, .tcard canvas { height: 38px; }
+  .mname { font-size: 12px; }
+  .tcards { grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .tb-phase, .tb-timer { font-size: 17px; }
+  .tb-top { flex-wrap: wrap; gap: 6px; }
+  .turn-grid { padding: 6px; gap: 8px; }
+  .lobby-grid { padding: 8px; gap: 8px; }
+  .srow > label { min-width: 0; width: 100%; }
+  .seg button { padding: 8px 10px; font-size: 13px; }
+  .mapbtn .thumb { width: 96px; }
+  .logo { font-size: 40px; }
+  .look-box { flex-direction: column; }
+  .title-panel { padding: 12px; }
+  .room-code .code { font-size: 34px; }
+  .intro-role { font-size: 34px; }
+  .end-title { font-size: 30px; }
+  .end-list { grid-template-columns: repeat(2, 1fr); }
+  .res-text { font-size: 18px; }
+  .meet-banner { font-size: 36px; }
+  .task { padding: 10px; }
+  .numgrid { grid-template-columns: repeat(5, 52px); }
+  #toasts { top: 100px; }
+}
+/* 가로 화면 휴대폰 (높이 낮음) */
+@media (max-height: 500px) {
+  .hud-tl { max-width: 34vw; }
+  .hud-tasks { max-height: 40vh; }
+  .hud-tc { width: 30vw; }
+  .abtn, body.touch .abtn { width: 60px; height: 60px; font-size: 12px; }
+  body.touch .abtns { max-width: 340px; }
+  .joy { width: 110px; height: 110px; left: 16px; bottom: 16px; }
+  .meeting { inset: 4px; padding: 6px; gap: 4px; }
+  .meet-main { flex-direction: row; }
+  .meeting .chat { width: 34vw; height: auto; }
+  .mgrid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+  .mcard { min-height: 42px; } .mcard canvas { height: 32px; }
+  .notices { font-size: 11px; padding: 3px 6px; }
+  .task-body { min-height: 150px; gap: 6px; }
+  .wires { height: 160px; } .tarea { height: 170px; }
+  .num { height: 40px; }
+  .intro { gap: 6px; } .intro-role { font-size: 30px; }
+  .intro-geese canvas { max-height: 90px; width: auto; }
+  .morning { max-height: 90vh; overflow: auto; }
+}
+.join-row .btn { white-space: nowrap; }
+body.touch .tb-top .mic .mlabel { display: none; }
+@media (max-width: 600px) { .join-row { flex-direction: column; } .join-row input { font-size: 22px; } }
